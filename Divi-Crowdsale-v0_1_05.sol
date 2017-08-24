@@ -130,7 +130,7 @@ contract DiviExchangeToken is IERC20 {
 
 
 
-    // Cap USD 20M @ 300 ETH/USD or 50M DIVX
+    // Cap USD 31M @ 300 ETH/USD  
 
     uint256 public CAP;
     uint256 public PRIVATECAP;
@@ -208,9 +208,9 @@ contract DiviExchangeToken is IERC20 {
 
     // Days 01-14: 1000 DIVX = 1 Ether
 
-    // Days 15-25: 625 DIVX = 1 Ether
+    // Days 15-24: 700 DIVX = 1 Ether
 
-    // Days 25-35: 550 DIVX = 1 Ether
+    // Days 25-35: 625 DIVX = 1 Ether
 
     // Days 35-45: 500 DIVX = 1 Ether
 
@@ -236,6 +236,12 @@ contract DiviExchangeToken is IERC20 {
         {
             return 1000;
             
+        }
+            
+        if (totalEthers <= PRIVATECAP ) {
+        
+            return 1000;
+            
         } else if (at < (STARTDATE + 24 days)) {
             return 700;
             
@@ -252,9 +258,6 @@ contract DiviExchangeToken is IERC20 {
             
             return 0;
         }
-        if (totalEthers <= PRIVATECAP )
-        
-            return 1000;
     
     }
 
