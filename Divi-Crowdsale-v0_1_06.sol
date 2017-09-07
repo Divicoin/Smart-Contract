@@ -4,7 +4,7 @@ pragma solidity ^0.4.11;
 
 interface IERC20 {
 
-    function totalSupply() constant returns (uint256 totalSupply);
+    function totalSupply() constant returns (uint256 _totalSupply);
 
     function balanceOf(address _owner) constant returns (uint256 balance);
 
@@ -161,7 +161,7 @@ contract DiviExchangeToken is IERC20 {
 
     function DiviExchangeToken(uint256 _privateCap, uint256 _start, uint256 _end, uint256 _cap, address _multisig) {
 
-        balances [msg.sender] = _totalSupply;
+        _totalSupply = 0;
 
 
 
@@ -183,7 +183,7 @@ contract DiviExchangeToken is IERC20 {
 
 
 
-    function totalSupply() constant returns (uint256 totalSupply) {
+    function totalSupply() constant returns (uint256 _totalSupply) {
 
         return _totalSupply;
 
@@ -232,7 +232,7 @@ contract DiviExchangeToken is IERC20 {
         {
             return 0;
             
-        } else if (at < (STARTTIME + 14 days )) 
+        } else if (at < (STARTTIME + 14 minutes )) 
         
         {
             return 1000;
@@ -243,13 +243,13 @@ contract DiviExchangeToken is IERC20 {
         
             return 1000;
             
-        } else if (at < (STARTTIME + 24 days)) {
+        } else if (at < (STARTTIME + 24 minutes)) {
             return 700;
             
-        } else if (at < (STARTTIME + 34 days)) {
+        } else if (at < (STARTTIME + 34 minutes)) {
             return 625;
             
-        } else if (at < (STARTTIME + 44 days)) {
+        } else if (at < (STARTTIME + 44 minutes)) {
             return 500;
             
         } else if (at <= ENDTIME) {
@@ -261,6 +261,8 @@ contract DiviExchangeToken is IERC20 {
         }
     
     }
+    
+    
 
     function () payable {
 
@@ -294,11 +296,9 @@ contract DiviExchangeToken is IERC20 {
 
         require(totalEthers <= CAP);
 
-
-
         // Token value equivalent to ETH sent multiplied by current buy price
 
-        uint256 tokens = msg.value.mul(_buyPrice);
+        uint256 tokens = msg.value.mul(buyPrice());
         
         // Check tokens > 0
 
@@ -381,7 +381,7 @@ contract DiviExchangeToken is IERC20 {
 
 
 
-    function transferFrom(address _from, address _to, uint256 _value) onlyPayloadSize(2 * 32) returns (bool success) {
+    function transferFrom(address _from, address _to, uint256 _value) onlyPayloadSize(3 * 32) returns (bool success) {
 
         require(
 
