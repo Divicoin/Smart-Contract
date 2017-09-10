@@ -15,6 +15,7 @@ contract DIVXToken is StandardToken, SafeMath {
 
     // crowdsale parameters
     bool public isPaused;
+    bool public isRedeeming;
     uint256 public fundingStartBlock;
     uint256 public firstXRChangeBlock;
     uint256 public secondXRChangeBlock;
@@ -62,7 +63,8 @@ contract DIVXToken is StandardToken, SafeMath {
         uint256 _thirdXRChangeBlock,
         uint256 _fundingEndBlock) {
 
-      isPaused = false;
+      isPaused    = false;
+      isRedeeming = false;
 
       totalSupply = 0;
       totalReceivedWei = 0;
@@ -129,6 +131,10 @@ contract DIVXToken is StandardToken, SafeMath {
     function withdrawWei(uint256 _value) external onlyOwner isNotPaused {
       require(_value <= this.balance);
 
+      // Allow withdrawal during the private sale, but after that, only allow
+      // withdrawal if we already met the minimum
+      require((block.number < firstXRChangeBlock) || (totalReceivedWei >= receivedWeiMin));
+
       // send the eth to the project multisig wallet
       fundDeposit.transfer(_value);
     }
@@ -143,6 +149,18 @@ contract DIVXToken is StandardToken, SafeMath {
     function unpause() external onlyOwner {
       // Move the contract to the previous state
       isPaused = false;
+    }
+
+    /// @dev Starts the redeeming phase of the contract
+    function startRedeeming() external onlyOwner isNotPaused {
+      // Move the contract to Redeeming state
+      isRedeeming = true;
+    }
+
+    /// @dev Stops the redeeming phase of the contract
+    function stopRedeeming() external onlyOwner isNotPaused {
+      // Move the contract out of the Redeeming state
+      isRedeeming = false;
     }
 
     /// @dev Allows contributors to recover their ether in the case of a failed funding campaign.
@@ -173,6 +191,9 @@ contract DIVXToken is StandardToken, SafeMath {
 
     /// @dev Redeems tokens and records the address of the sender in the new blockchain
     function redeem(bytes32 DiviAddress) external {
+      // Only allow this function to be called when on the redeeming state
+      require(isRedeeming);
+
       uint256 divxVal = balances[msg.sender];
 
       // Move the tokens of the caller to the project's address
@@ -181,7 +202,6 @@ contract DIVXToken is StandardToken, SafeMath {
       // Log the redeeming of this tokens
       LogRedeem(msg.sender, divxVal, DiviAddress);
     }
-
 
     /// @dev Returns the current token price
     function getCurrentTokenPrice() private constant returns (uint256 currentPrice) {
