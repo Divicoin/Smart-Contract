@@ -27,7 +27,7 @@ contract DIVXToken is StandardToken, SafeMath {
     // a refund
     mapping (address => uint256) private weiBalances;
 
-    // We need to keep track of how much ether has been contributed
+    // We need to keep track of how much ether (in units of Wei) has been contributed
     uint256 public totalReceivedWei;
 
     uint256 public constant privateExchangeRate  = 1000; // 1000 DIVX tokens per 1 ETH
@@ -39,9 +39,9 @@ contract DIVXToken is StandardToken, SafeMath {
     uint256 public constant receivedWeiMin =    5 * (10**3) * 10**decimals;
 
     // events
-    event CreateDIVX(address indexed _to, uint256 _value);
-    event LogRefund(address indexed _to, uint256 _value);
-    event LogRedeem(address indexed _to, uint256 _value, bytes32 _DIVIAddress);
+    event LogCreate(address indexed _to, uint256 _value, uint256 _tokenValue);
+    event LogRefund(address indexed _to, uint256 _value, uint256 _tokenValue);
+    event LogRedeem(address indexed _to, uint256 _value, bytes32 _diviAddress);
 
     // modifiers
     modifier onlyOwner() {
@@ -66,7 +66,7 @@ contract DIVXToken is StandardToken, SafeMath {
       isPaused    = false;
       isRedeeming = false;
 
-      totalSupply = 0;
+      totalSupply      = 0;
       totalReceivedWei = 0;
 
       fundDeposit = _fundDeposit;
@@ -80,13 +80,15 @@ contract DIVXToken is StandardToken, SafeMath {
 
     // overriden methods
 
-    // Overridden method to check that the minimum was reached (i.e. no refund possible)
+    // Overridden method to check that the minimum was reached (no refund is possible
+    // after that, so transfer of tokens shouldn't be a problem)
     function transfer(address _to, uint256 _value) returns (bool success) {
       require(totalReceivedWei >= receivedWeiMin);
       return super.transfer(_to, _value);
     }
 
-    // Overridden method to check that the minimum was reached (i.e. no refund possible)
+    // Overridden method to check that the minimum was reached (no refund is possible
+    // after that, so transfer of tokens shouldn't be a problem)
     function transferFrom(address _from, address _to, uint256 _value) returns (bool success) {
       require(totalReceivedWei >= receivedWeiMin);
       return super.transferFrom(_from, _to, _value);
@@ -98,19 +100,19 @@ contract DIVXToken is StandardToken, SafeMath {
       require(block.number <= fundingEndBlock);
       require(msg.value > 0);
 
-      // Check the ETH cap
+      // Check that this transaction wouldn't exceed the ETH cap
       uint256 checkedReceivedWei = safeAdd(totalReceivedWei, msg.value);
       require(checkedReceivedWei <= receivedWeiCap);
 
       // Calculate how many tokens (in units of Wei) should be awarded
-      // to the contributor
+      // on this transaction
       uint256 tokens = safeMult(msg.value, getCurrentTokenPrice());
 
       // Calculate how many tokens (in units of Wei) should be awarded to the project (20%)
       uint256 projectTokens = safeDiv(tokens, 5);
 
-      // Increment the total received ETH and update this
-      // contributor's ETH balance
+      // Increment the total received ETH and update our accounting of how much ETH this
+      // contributor has sent us so far
       totalReceivedWei = checkedReceivedWei;
       weiBalances[msg.sender] += msg.value;
 
@@ -124,10 +126,10 @@ contract DIVXToken is StandardToken, SafeMath {
       totalSupply = safeAdd(totalSupply, projectTokens);
       balances[fundDeposit] += projectTokens;
 
-      CreateDIVX(msg.sender, tokens);  // logs token creation
+      LogCreate(msg.sender, msg.value, tokens);  // logs token creation
     }
 
-    /// @dev Allows to transfer ether from the contract
+    /// @dev Allows to transfer ether from the contract to the multisig wallet
     function withdrawWei(uint256 _value) external onlyOwner isNotPaused {
       require(_value <= this.balance);
 
@@ -145,9 +147,9 @@ contract DIVXToken is StandardToken, SafeMath {
       isPaused = true;
     }
 
-    /// @dev Proceeds with the contract
-    function unpause() external onlyOwner {
-      // Move the contract to the previous state
+    /// @dev Resume the contract
+    function resume() external onlyOwner {
+      // Move the contract out of the Paused state
       isPaused = false;
     }
 
@@ -163,7 +165,7 @@ contract DIVXToken is StandardToken, SafeMath {
       isRedeeming = false;
     }
 
-    /// @dev Allows contributors to recover their ether in the case of a failed funding campaign.
+    /// @dev Allows contributors to recover their ether in the case of a failed funding campaign
     function refund() external {
       // prevents refund until sale period is over
       require(block.number > fundingEndBlock);
@@ -183,24 +185,26 @@ contract DIVXToken is StandardToken, SafeMath {
       totalSupply = safeSubtract(totalSupply, divxVal);
 
       // Log this refund operation
-      LogRefund(msg.sender, weiVal);
+      LogRefund(msg.sender, weiVal, divxVal);
 
       // Send the money back
       msg.sender.transfer(weiVal);
     }
 
-    /// @dev Redeems tokens and records the address of the sender in the new blockchain
-    function redeem(bytes32 DiviAddress) external {
+    /// @dev Redeems tokens and records the address that the sender created in the new blockchain
+    function redeem(bytes32 diviAddress) external {
       // Only allow this function to be called when on the redeeming state
       require(isRedeeming);
 
+      // Retrieve how much DIVX (in units of Wei) this account has
       uint256 divxVal = balances[msg.sender];
+       require(divxVal > 0);
 
       // Move the tokens of the caller to the project's address
       assert(super.transfer(fundDeposit, divxVal));
 
       // Log the redeeming of this tokens
-      LogRedeem(msg.sender, divxVal, DiviAddress);
+      LogRedeem(msg.sender, divxVal, diviAddress);
     }
 
     /// @dev Returns the current token price
