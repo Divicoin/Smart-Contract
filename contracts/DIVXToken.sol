@@ -23,8 +23,8 @@ contract DIVXToken is StandardToken, SafeMath {
     uint256 public fundingEndBlock;
 
     // Since we have different exchange rates at different stages, we need to keep track
-    // of how much ether (in units of Wei) each contributed in case that we need to issue
-    // a refund
+    // of how much ether (in units of Wei) each address contributed in case that we need
+    // to issue a refund
     mapping (address => uint256) private weiBalances;
 
     // We need to keep track of how much ether (in units of Wei) has been contributed
@@ -111,10 +111,13 @@ contract DIVXToken is StandardToken, SafeMath {
       // Calculate how many tokens (in units of Wei) should be awarded to the project (20%)
       uint256 projectTokens = safeDiv(tokens, 5);
 
-      // Increment the total received ETH and update our accounting of how much ETH this
-      // contributor has sent us so far
+      // Increment the total received ETH
       totalReceivedWei = checkedReceivedWei;
-      weiBalances[msg.sender] += msg.value;
+
+      // Only update our accounting of how much ETH this contributor has sent us if
+      // we're already on the public sale (since private sale contributions are going
+      // to be used before the end of end of the sale period, they don't get a refund)
+      if (block.number >= firstXRChangeBlock) weiBalances[msg.sender] += msg.value;
 
       // Increment the total supply of tokens and then deposit the tokens
       // to the contributor
