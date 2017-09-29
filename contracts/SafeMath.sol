@@ -24,5 +24,5 @@ contract SafeMath {
       uint256 z = x / y;
       return z;
     }
-
+    
 }
